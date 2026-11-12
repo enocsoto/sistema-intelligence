@@ -34,7 +34,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --port 8000
 ```
 
-El modelo y la colección no van fijos en el código: salen de `OPENAI_MODEL` y `CHROMA_COLLECTION`. Sin `OPENAI_API_KEY` las herramientas igual responden; el modelo solo redacta cuando hay clave.
+El modelo y la colección no van fijos en el código: salen de `OPENAI_MODEL` y `CHROMA_COLLECTION`. Sin `OPENAI_API_KEY` el supervisor sigue una ruta local. Con clave, el modelo elige el nodo y un freno le impide cerrar si falta el dato o pasar de 6 pasos.
 
 ## API
 
@@ -52,7 +52,7 @@ curl -s -X POST localhost:8000/tasks/<job_id>/approve \
 
 Estados: `PENDING`, `RUNNING`, `WAITING_APPROVAL`, `DONE`, `REJECTED`, `FAILED`. Un id que no existe responde 404. Las entradas y salidas están validadas con Pydantic, igual que los argumentos de las herramientas.
 
-Cinco peticiones a la vez:
+Cinco peticiones a la vez. El script espera a que cada una termine y cuenta los spans nuevos en Phoenix. Deja el resultado en `traces/pruebas.json`.
 
 ```bash
 python scripts/carga.py

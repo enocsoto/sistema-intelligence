@@ -19,10 +19,11 @@ from app.tools import (
 MAX_STEPS = 6
 
 
-def decidir(state: OrchestratorState, steps: int) -> str:
-    """Cierra solo con hallazgo y análisis. Corta el bucle a los 6 pasos."""
-    if steps >= MAX_STEPS:
-        return "finish"
+RUTAS = {"research", "analyst", "hitl", "finish"}
+
+
+def ruta_local(state: OrchestratorState) -> str:
+    """Orden de respaldo cuando no hay modelo: dato, revisión, cálculo, cierre."""
     if not state.get("findings"):
         return "research"
     if state.get("critical") and state.get("approved") is None:
@@ -32,6 +33,21 @@ def decidir(state: OrchestratorState, steps: int) -> str:
     if not state.get("analysis"):
         return "analyst"
     return "finish"
+
+
+def frenar(propuesto: str, state: OrchestratorState, steps: int) -> str:
+    """El modelo elige. Esto solo impide cerrar sin dato o pasar de 6 pasos."""
+    if steps >= MAX_STEPS or state.get("approved") is False:
+        return "finish"
+    if propuesto not in RUTAS:
+        propuesto = ruta_local(state)
+    if propuesto == "finish" and not state.get("findings"):
+        return "research"
+    if propuesto == "finish" and state.get("critical") and state.get("approved") is None:
+        return "hitl"
+    if propuesto == "finish" and not state.get("analysis"):
+        return "analyst"
+    return propuesto
 
 
 class Decision(BaseModel):
@@ -80,13 +96,17 @@ async def analyst_node(state: OrchestratorState) -> dict:
 async def supervisor_node(state: OrchestratorState) -> dict:
     steps = int(state.get("steps", 0)) + 1
     if os.getenv("OPENAI_API_KEY", "").strip() and OPENAI_MODEL:
-        await _proponer(state)
-    nxt = decidir(state, steps)
+        propuesto = await _proponer(state)
+        origen = "modelo"
+    else:
+        propuesto = ruta_local(state)
+        origen = "local"
+    nxt = frenar(propuesto, state, steps)
     return {
         "next_agent": nxt,
         "steps": steps,
         "task_completed": nxt == "finish",
-        "messages": [AIMessage(content=f"supervisor -> {nxt}", name="supervisor")],
+        "messages": [AIMessage(content=f"{origen} propuso {propuesto} -> {nxt}", name="supervisor")],
     }
 
 
@@ -116,7 +136,9 @@ async def _proponer(state: OrchestratorState) -> str:
             ),
         ]
     )
-    return decision.next_agent
+    if isinstance(decision, dict):
+        return str(decision.get("next_agent", ""))
+    return str(decision.next_agent)
 
 
 def _numeros(findings: str) -> tuple[float | None, int | None]:

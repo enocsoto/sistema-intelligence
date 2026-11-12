@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -50,3 +50,42 @@ class PoliticaArgs(BaseModel):
 class PromedioArgs(BaseModel):
     total: float = Field(ge=0)
     cantidad: int = Field(ge=1)
+
+
+class DocumentoRecuperado(BaseModel):
+    id: str
+    texto: str
+    metadata: dict[str, Any]
+
+
+class HallazgoCliente(BaseModel):
+    consulta: str
+    documentos: list[DocumentoRecuperado]
+    cliente_id: int
+    pedidos: int = Field(ge=0)
+    total: float = Field(ge=0)
+    ultimo: str
+    fuente: str
+
+
+class ErrorCliente(BaseModel):
+    error: str
+    cliente_id: int
+    sugerencia: str
+
+
+class HallazgoPolitica(BaseModel):
+    consulta: str
+    documentos: list[DocumentoRecuperado] = Field(min_length=1)
+
+
+class ErrorPolitica(BaseModel):
+    error: str
+    consulta: str
+
+
+class TicketSalida(BaseModel):
+    total: float = Field(ge=0)
+    cantidad: int = Field(ge=1)
+    ticket_promedio: float = Field(ge=0)
+    supera_4000: bool
