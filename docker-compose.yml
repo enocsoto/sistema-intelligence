@@ -1,0 +1,35 @@
+services:
+  redis:
+    image: redis/redis-stack-server:latest
+    ports:
+      - "6391:6379"
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    ports:
+      - "6006:6006"
+      - "4317:4317"
+  api:
+    build: .
+    environment:
+      REDIS_URL: redis://redis:6379
+      PHOENIX_ENABLED: "1"
+      PHOENIX_COLLECTOR_ENDPOINT: http://phoenix:6006/v1/traces
+      PHOENIX_PROJECT: sistema-intelligence
+      CHROMA_PATH: /data/chroma
+      CHROMA_COLLECTION: tienda
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      UMBRAL_CRITICO: "10000"
+      LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-false}
+      LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-}
+      LANGCHAIN_PROJECT: sistema-intelligence
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma:/data/chroma
+    depends_on:
+      - redis
+      - phoenix
+
+volumes:
+  chroma:
